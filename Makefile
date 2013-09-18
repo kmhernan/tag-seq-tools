@@ -31,7 +31,8 @@ export LIBS     = -lz
 export BT_ROOT  = src/utils/BamTools/
 
 SUBDIRS = $(SRC_DIR)/CountGeneModel \
-	  $(SRC_DIR)/CountMatrix
+	  $(SRC_DIR)/CountMatrix \
+          $(SRC_DIR)/StatsGeneModel
 
 UTIL_SUBDIRS =	$(SRC_DIR)/utils/BamTools \
 	     	$(SRC_DIR)/utils/gzstream \
