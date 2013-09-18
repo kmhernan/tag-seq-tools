@@ -27,6 +27,19 @@ TagSeqGMStats::TagSeqGMStats(string &infile, string &out, string &ingff) {
     Run();
 }
 
+// build
+TagSeqGMStats::TagSeqGMStats(string &infile, string &out, string &ingff, string &out_pacid) {
+
+    _infile    = infile;
+    _out       = out;
+    _ingff     = ingff;
+    _counts    = new Counts(); 
+    _gff       = new GffFileReader(ingff);
+    _out_pacid = out_pacid;
+
+    // Process
+    RunDetailed();
+}
 // destroy
 TagSeqGMStats::~TagSeqGMStats(void) {
     delete _gff;
@@ -52,6 +65,156 @@ void TagSeqGMStats::Run() {
 }
 
 void TagSeqGMStats::GetStatistics() {
+    // Open the BAM file
+    BamReader reader;
+    if ( !reader.Open(_infile)) {
+        cerr << "Failed to open BAM file " << _infile << endl;
+        exit(1);
+    }
+
+    // See BamTools Api
+    const SamHeader header = reader.GetHeader();
+    const RefVector references = reader.GetReferenceData();
+
+    // Variables for reading the Bam file
+    string scaffold;
+    BamAlignment al;
+    GffInterval results;
+    string pacid;
+
+    // Duplicate read cache
+    //map<string, map<string, int> > saw_read;
+    map<string, int> saw_read;
+
+    // PACID cache
+    map<string, map<string, int> > plus_gene;
+    map<string, map<string, int> > minus_gene;
+
+    // Process the BAM records
+    while ( reader.GetNextAlignment(al) ) {
+
+        // Need statistics at both the READ level and the
+        // PACID gene level.
+        _counts->total++;
+
+        results.clear();
+      
+        saw_read[al.Name]++;
+
+        if (al.RefID >= 0) {
+            scaffold = references[al.RefID].RefName;
+            if (al.IsReverseStrand()) {
+	        _counts->reverse++;
+                if (_tree_list.count(scaffold) > 0 && _tree_list[scaffold].count('-') > 0) {
+		    _counts->overlap++;
+		    _counts->rev_overlap++;
+                    _tree_list[scaffold]['-'].findOverlapping(al.Position, al.GetEndPosition(), results); 
+
+                    // Check if there is only one gene in the interval
+                    if (results.size() == 1) {
+                        _counts->rev_one_gm++;
+                        pacid = results[0].value.gene;
+                        minus_gene[pacid][al.Name]++;
+                    }
+                    else
+                        _counts->rev_multi_gm++;
+                }
+		else {
+		    _counts->nonoverlap++;
+		    _counts->rev_nonover++;
+        	}
+            }
+            else {
+                _counts->forward++;
+                if (_tree_list.count(scaffold) > 0 && _tree_list[scaffold].count('+') > 0) {
+		    _counts->overlap++;
+		    _counts->frd_overlap++;
+                    _tree_list[scaffold]['+'].findOverlapping(al.Position, al.GetEndPosition(), results); 
+
+                    // Check if there is only one gene in the interval
+                    if (results.size() == 1) {
+                        _counts->frd_one_gm++;
+                        pacid = results[0].value.gene;
+                        plus_gene[pacid][al.Name]++;
+                    }
+                    else
+                        _counts->frd_multi_gm++;
+                }
+	 	else {
+		    _counts->nonoverlap++;
+		    _counts->frd_nonover++;
+ 		}
+            }
+        }
+    }
+ 
+    reader.Close();
+
+    // Iterate through map to count unique and duplicate reads
+    for (map<string, int>::iterator i = saw_read.begin(); i != saw_read.end(); ++i) {
+        if (i->second == 1)
+            _counts->unique++;
+        else
+            _counts->duplicate++;
+    }
+
+    // Size of this map == number of PACIDS hit
+    _counts-> rev_pac_hit = minus_gene.size();
+    _counts-> frd_pac_hit = plus_gene.size();
+    _counts-> total_pac   = _counts->rev_pac_hit + _counts->frd_pac_hit;
+
+    // Iterate through pac map to count the number of unique and duplicate reads
+    for (map<string, map<string, int> >::iterator j = minus_gene.begin(); j != minus_gene.end(); j++){
+	bool is_dup = false;
+        for(map<string, int>::iterator k = j->second.begin(); k != j->second.end(); k++) {
+            if (saw_read[k->first] > 1) {
+                is_dup = true;
+                break;
+            }
+        }
+        if (is_dup)
+            _counts->rev_dup_pac++;
+        else
+            _counts->rev_unique_pac++;
+    }
+
+    for (map<string, map<string, int> >::iterator j = plus_gene.begin(); j != plus_gene.end(); j++){
+	bool is_dup = false;
+        for(map<string, int>::iterator k = j->second.begin(); k != j->second.end(); k++) {
+            if (saw_read[k->first] > 1) {
+                is_dup = true;
+                break;
+            }
+        }
+        if (is_dup)
+            _counts->frd_dup_pac++;
+        else
+            _counts->frd_unique_pac++;
+    }
+}
+
+/**
+ * Wrapper function for running the application with detailed.
+ */
+void TagSeqGMStats::RunDetailed() {
+    // load the GFF file
+    cout << "Loading intervals..." << endl;
+    int query = 0;
+    _gff->LoadIntervals(query, _tree_list);
+
+    // Run statistics
+    cout << "Gathering statistics..." << endl;
+    GetStatisticsWithDetail();
+
+    // Print summary
+    cout << "Writing summary..." << endl;
+    PrintSummary();
+}
+
+/**
+ * Get statistics plus pacid detailed stats
+ */
+void TagSeqGMStats::GetStatisticsWithDetail() {
     // Open the BAM file
     BamReader reader;
     if ( !reader.Open(_infile)) {

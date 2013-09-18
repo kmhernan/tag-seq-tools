@@ -62,6 +62,7 @@ class TagSeqGMStats {
 public:
     // constructor
     TagSeqGMStats(std::string &infile, std::string &out, std::string &ingff);
+    TagSeqGMStats(std::string &infile, std::string &out, std::string &ingff, std::string &out_pacid);
 
     // destructor
     ~TagSeqGMStats(void);
@@ -72,6 +73,7 @@ private:
     std::string _infile;
     std::string _out;
     std::string _ingff;
+    std::string _out_pacid;
 
     // Initialize GffFileReader pointer
     GffFileReader * _gff;
@@ -84,7 +86,9 @@ private:
     
     // Functions
     void Run();
+    void RunDetailed();
     void GetStatistics();
+    void GetStatisticsWithDetails();
     void PrintSummary();
 };
 
