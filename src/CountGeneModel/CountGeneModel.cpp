@@ -331,7 +331,6 @@ void TagSeqGMCounts::ProcessBam_randomOne() {
     for (map<string, map<string, int> >::iterator i = saw_read.begin(); i != saw_read.end(); ++i) {
         if (i->second.size() == 1) {
             for (map<string, int>::iterator j = i->second.begin(); j != i->second.end(); ++j)
-                _gene_counts[j->first] += j->second;
                 _gene_counts[j->first] += 1; 
         }
         else {
@@ -344,7 +343,6 @@ void TagSeqGMCounts::ProcessBam_randomOne() {
             choice = keys[distribution(generator)];
             if (_annotateDups)
 	        _dup_pac.insert(choice);
-            _gene_counts[choice] += i->second[choice];
             _gene_counts[choice] += 1; 
         }
     }
