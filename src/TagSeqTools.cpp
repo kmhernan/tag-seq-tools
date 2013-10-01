@@ -21,6 +21,10 @@ using namespace std;
 
 int countGeneModel_main(int argc, char* argv[]);
 int countMatrix_main(int argc, char* argv[]);
+<<<<<<< HEAD
+=======
+int statsGeneModel_main(int argc, char* argv[]);
+>>>>>>> develop
 
 int tagseq_help(void);
 
@@ -45,6 +49,10 @@ int main(int argc, char *argv[]) {
     // tools
     else if (sub_cmd == "GMCounts") { STATUS = countGeneModel_main(argc-1, argv+1); }
     else if (sub_cmd == "CountMatrix") { STATUS = countMatrix_main(argc-1, argv+1); }
+<<<<<<< HEAD
+=======
+    else if (sub_cmd == "GMStats") { STATUS = statsGeneModel_main(argc-1, argv+1); }
+>>>>>>> develop
 
     // Unknown command
     else {
@@ -66,6 +74,11 @@ int tagseq_help(void) {
     cout << endl;
     cout << "    GMCounts    " << "Create expression counts from reads mapped to genome [GFF3 required].\n";
     cout << "    CountMatrix " << "Merge GMCounts files to create an expression count matrix.\n";
+<<<<<<< HEAD
+=======
+    cout << "    GMStats     " << "Run summary statistics on reads mapped to genome and overlap \n";
+    cout << "                " << "mRNA intervals in a GFF file.\n";
+>>>>>>> develop
     cout << endl;
     return 0;
 }
