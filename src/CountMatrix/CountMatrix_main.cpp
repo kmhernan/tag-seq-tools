@@ -106,10 +106,7 @@ void countMatrix_help(void)
     cout << "Required Arguments:"                                                                 << endl;
     cout << "Input either a directory with files:\n"                                              << endl;
     cout << "    -i                   " << "Input parent directory of all the GMCount files you " << endl;
-    cout << "                         want to combine.\n"                                         << endl;
-    cout << "Or provide a tab-delimited file with the following columns:"                         << endl;
-    cout << "    1. path - path to a single GMCounts file." << endl;
-    cout << "    2. output column id - the name used to the column representing this file in the matrix" << endl;
+    cout << "                         " << "want to combine.\n"                                         << endl;
     cout << "    -o                   " << "Output expression matrix file"                        << endl;
     cout << endl;
 
