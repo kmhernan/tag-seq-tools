@@ -16,8 +16,8 @@ using namespace std;
 
 // build
 TagSeqGMCounts::TagSeqGMCounts(string &infile, string &ingff,
-			       string &out, string &nonoverlapping,
-			       int &query, bool noDups, bool primaryAln,
+			       string &out, string &nonoverlapping, string &outAssign,
+			       bool outputReadAssign, int &query, bool noDups, bool primaryAln,
  			       bool randomOne, bool splitCounts, bool annotateDups)
 {
 
@@ -34,13 +34,19 @@ TagSeqGMCounts::TagSeqGMCounts(string &infile, string &ingff,
     _randomOne      = randomOne;
     _splitCounts    = splitCounts;
     _annotateDups   = annotateDups;
- 
+
+    _outputReadAssign = outputReadAssign;
+    _outAssign        = outAssign;
+
+    if (_outputReadAssign) _assignStream.open(_outAssign.c_str(), ofstream::out);
+     
     // Process
     Run();
 }
 
 // destroy
 TagSeqGMCounts::~TagSeqGMCounts(void) {
+    _assignStream.close();
     delete _gff;
 }
 
@@ -113,6 +119,7 @@ void TagSeqGMCounts::ProcessBam_noDups() {
 
         // Clear the results vector
         results.clear(); 
+        size_t rsize;
 
         // BWA Sometimes does weird things with the reference dictionary, so
         // this check is needed to skip a possible segmentation fault.
@@ -131,10 +138,16 @@ void TagSeqGMCounts::ProcessBam_noDups() {
                     o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                     continue;
                 }
+
+                // Write read assignment
+                rsize = results.size();
+                if (_outputReadAssign) WriteReadAssign( al, results, scaffold, rsize );
+
                 // Deal with dups 
-                if (results.size() == 1) {
+                if (rsize == 1) {
                     ++_counts.overlapping;
                     pacid = results[0].value.gene;
+
                     if (!readDup) { 
                         saw_read[readName] = pacid;
                         _gene_counts[pacid]++;
@@ -185,6 +198,7 @@ void TagSeqGMCounts::ProcessBam_primaryAln() {
     GffInterval results;
     string readName;
     string pacid;
+    size_t rsize;
 
     // Write the nonoverlapping sites to file.
     ofstream o(_nonoverlapping.c_str());
@@ -218,6 +232,11 @@ void TagSeqGMCounts::ProcessBam_primaryAln() {
                     o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                     continue;
                 }
+
+                // Write read assignment
+                rsize = results.size();
+                if (_outputReadAssign) WriteReadAssign( al, results, scaffold, rsize );
+
                 // Now we count overlapping sites, if any, and deal with multiHitModel sites
                 if (results.size() == 1) {
                     ++_counts.overlapping;
@@ -265,6 +284,7 @@ void TagSeqGMCounts::ProcessBam_randomOne() {
     GffInterval results;
     string readName;
     string pacid;
+    size_t rsize;
 
     // Write the nonoverlapping sites to file.
     ofstream o(_nonoverlapping.c_str());
@@ -298,14 +318,19 @@ void TagSeqGMCounts::ProcessBam_randomOne() {
                     o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                     continue;
                 }
+
+                // Write read assignmetn
+                rsize = results.size();
+                if (_outputReadAssign) WriteReadAssign( al, results, scaffold, rsize );
+
                 // Deal with dups 
-                if (results.size() == 1) {
+                if (rsize == 1) {
                     ++_counts.overlapping;
                     pacid = results[0].value.gene;
                     saw_read[readName][pacid]++;
                 }
 
-                else if (results.size() > 1) {
+                else if (rsize > 1) {
                     ++_counts.multiHitModel;
                 }
 
@@ -373,6 +398,7 @@ void TagSeqGMCounts::ProcessBam_splitCounts() {
     GffInterval results;
     string readName;
     string pacid;
+    size_t rsize;
 
     // Write the nonoverlapping sites to file.
     ofstream o(_nonoverlapping.c_str());
@@ -406,6 +432,11 @@ void TagSeqGMCounts::ProcessBam_splitCounts() {
                     o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                     continue;
                 }
+
+                // Write read assignment
+                rsize = results.size();
+                if (_outputReadAssign) WriteReadAssign( al, results, scaffold, rsize );
+
                 // Deal with dups 
                 if (results.size() == 1) {
                     ++_counts.overlapping;
@@ -457,6 +488,26 @@ void TagSeqGMCounts::ProcessBam_splitCounts() {
   
     o.close();
     reader.Close();
+}
+
+/**
+ * Writes a read assignment information to file
+ */
+void TagSeqGMCounts::WriteReadAssign(BamAlignment &al, GffInterval &result, string &scaffold, size_t &nover) {
+    // No elegant join method like in perl or python :-(
+    stringstream ss;
+    string pacid;
+
+    // If it doesn't overlap any we will just ignore
+    if (nover > 0) {
+        for (size_t i = 0; i < result.size(); ++i) {
+            if( i != 0) ss << ",";
+            ss << result[i].value.gene;
+        }
+        pacid = ss.str();
+        _assignStream << al.Name << "\t" << pacid << "\t" << scaffold << "\t" << al.Position << "\t"
+                      << al.GetEndPosition() << "\t" << nover << endl; 
+    }
 }
 
 /**

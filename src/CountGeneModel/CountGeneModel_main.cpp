@@ -29,6 +29,7 @@ int countGeneModel_main(int argc, char* argv[]) {
     string ingff;
     string out;
     string nonoverlapping;
+    string outAssign;
 
     // Gff query choice
     int query = 0;
@@ -38,12 +39,14 @@ int countGeneModel_main(int argc, char* argv[]) {
     bool haveGff = false;
     bool haveOut = false;
     bool haveNon = false;
+
     // Duplicate reads options
-    bool noDups      = true;
-    bool primaryAln  = false;
-    bool randomOne   = false; 
-    bool splitCounts = false;
+    bool noDups       = true;
+    bool primaryAln   = false;
+    bool randomOne    = false; 
+    bool splitCounts  = false;
     bool annotateDups = false;
+    bool outputReadAssign = false;
 
     if (argc <= 1) showHelp = true;
 
@@ -108,6 +111,15 @@ int countGeneModel_main(int argc, char* argv[]) {
         }
       }
 
+      // Output all read assignments for debug
+      else if (PARAMETER_CHECK("--read-assignment", 17, parameterLength)) {
+        if ((i+1) < argc) {
+          outputReadAssign = true;
+          outAssign = argv[i + 1];
+          i++;
+        }
+      }
+
       // Options for duplicately mapped reads
       else if (PARAMETER_CHECK("--primary-alignment", 19, parameterLength)) {
           primaryAln = true;
@@ -151,6 +163,7 @@ int countGeneModel_main(int argc, char* argv[]) {
       cerr << "*****ERROR: Need -n non-overlapping transcripts file." << endl;
       showHelp = true; 
     }
+
     // Check mutally exclusive dups options
     else if (primaryAln && (randomOne || splitCounts)) {
       cerr << "*****ERROR: You can only choose one duplicate read function." << endl;
@@ -173,9 +186,15 @@ int countGeneModel_main(int argc, char* argv[]) {
       showHelp = true;
     }
 
+    else if (outputReadAssign && outAssign.empty()) {
+      cerr << "*****ERROR: --read-assignment requires a file path" << endl;
+      showHelp = true;
+    }
+
     // Run the application
     if (!showHelp) {
-      TagSeqGMCounts *ts = new TagSeqGMCounts(infile, ingff, out, nonoverlapping, query,
+      TagSeqGMCounts *ts = new TagSeqGMCounts(infile, ingff, out, nonoverlapping, outAssign, 
+                                              outputReadAssign, query,
 					      noDups, primaryAln, randomOne, splitCounts,
 					      annotateDups);
       delete ts;
@@ -200,7 +219,7 @@ void countGeneModel_help(void)
     cout << "USAGE: TagSeqTools GMCounts -i <file.bam> -g <file.gff> -o <file.tab> "              << endl;
     cout << "                            -n <nonoverlapping.tab> [--mRNA | --gene] "              << endl;
     cout << "                            [--primary-alignment | --random-one | --split-counts]"   << endl;
-    cout << "                            [--flag-dups]"                 			  << endl;
+    cout << "                            [--flag-dups] [--read-assignment <file>]"	          << endl;
     cout << endl; 
 
     cout << "Required Arguments:"                                                                 << endl;
@@ -220,6 +239,7 @@ void countGeneModel_help(void)
 
     cout << "Optional Arguments:"                                                                 << endl;
     cout << "    --gene               " << "Query intervals on 'gene' in GFF [mRNA is default]"   << endl;
+    cout << "    --read-assignment    " << "Output read assignment information to FILE"           << endl; 
     cout << "    -h                   " << "Print this message and exit"                          << endl;
     cout << endl;
 

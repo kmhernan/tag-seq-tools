@@ -51,7 +51,7 @@ public:
     // constructor
     TagSeqGMCounts(std::string &infile, std::string &ingff, 
 		   std::string &out, std::string &nonoverlapping,
-		   int& query, bool noDups, bool primaryAln,
+		   std::string &outAssign, bool outputReadAssign, int& query, bool noDups, bool primaryAln,
                    bool randomOne, bool splitCounts, bool annotateDups);
 
     // destructor
@@ -64,7 +64,7 @@ private:
     std::string _ingff;
     std::string _out;
     std::string _nonoverlapping;
-    
+ 
     // query
     int _query;
 
@@ -78,6 +78,11 @@ private:
     bool _splitCounts;
     bool _annotateDups;
 
+    // Read assign
+    bool _outputReadAssign;
+    std::string _outAssign;
+    std::ofstream _assignStream;
+    
     // Containers
     std::map<std::string, std::map<char, IntervalTree<Gff> > > _tree_list;
     std::map<std::string, int> _gene_counts;
@@ -93,6 +98,9 @@ private:
 
     // Write results to file
     void WriteCounts();
+    
+    // Write read alignmetns
+    void WriteReadAssign(BamTools::BamAlignment &al, GffInterval &result, std::string &scaffold, size_t &nvoer);
 
     // Print reports
     void PrintSummary();
