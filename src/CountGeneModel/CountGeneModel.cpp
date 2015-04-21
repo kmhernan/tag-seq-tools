@@ -103,6 +103,8 @@ void TagSeqGMCounts::ProcessBam_noDups() {
     map<string, string> saw_read;
     bool readDup;
 
+    int start;
+    size_t rsize;
     while ( reader.GetNextAlignment(al) ) {
 
         ++_counts.total;
@@ -119,7 +121,8 @@ void TagSeqGMCounts::ProcessBam_noDups() {
 
         // Clear the results vector
         results.clear(); 
-        size_t rsize;
+        
+        start = al.Position + 1;
 
         // BWA Sometimes does weird things with the reference dictionary, so
         // this check is needed to skip a possible segmentation fault.
@@ -129,13 +132,15 @@ void TagSeqGMCounts::ProcessBam_noDups() {
             if (_tree_list.count(scaffold) > 0) {
                 // Check the strandedness and if the map contains intervals for that 
                 // strand on this scaffold
-                if (al.IsReverseStrand() && _tree_list[scaffold].count('-') > 0)
-                    _tree_list[scaffold]['-'].findOverlapping(al.Position, al.GetEndPosition(), results);
-                else if (!al.IsReverseStrand() && _tree_list[scaffold].count('+') > 0)
-                    _tree_list[scaffold]['+'].findOverlapping(al.Position, al.GetEndPosition(), results);
+                if (al.IsReverseStrand() && _tree_list[scaffold].count('-') > 0) {
+                    _tree_list[scaffold]['-'].findOverlapping(start, al.GetEndPosition(), results);
+                }
+                else if (!al.IsReverseStrand() && _tree_list[scaffold].count('+') > 0) {
+                    _tree_list[scaffold]['+'].findOverlapping(start, al.GetEndPosition(), results);
+                }
                 else {
                     ++_counts.nonOverlapping;
-                    o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                    o << scaffold << "\tA\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                     continue;
                 }
 
@@ -165,13 +170,13 @@ void TagSeqGMCounts::ProcessBam_noDups() {
 
                 else {
                     ++_counts.nonOverlapping;
-                    o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                    o << scaffold << "\tB\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                 }
             }
 
             else {
                 ++_counts.nonOverlapping;
-                o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                o << scaffold << "\tC\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
             }
         }
     }
@@ -199,6 +204,7 @@ void TagSeqGMCounts::ProcessBam_primaryAln() {
     string readName;
     string pacid;
     size_t rsize;
+    int start;
 
     // Write the nonoverlapping sites to file.
     ofstream o(_nonoverlapping.c_str());
@@ -214,22 +220,24 @@ void TagSeqGMCounts::ProcessBam_primaryAln() {
 
         results.clear(); 
 
+        start = al.Position + 1;
         // BWA Sometimes does weird things with the reference dictionary, so
         // this check is needed to skip a possible segmentation fault.
         if (al.RefID >= 0) {
             scaffold = references[al.RefID].RefName;
             // Check if the scaffold is even in the map; else it's non-overlapping 
             if (_tree_list.count(scaffold) > 0) {
-                // Check the standedness and if the map contains intervals for that 
-                // strand on this scaffold. It it's not found on either interval, it's
-                // non-overlapping.
-                if (al.IsReverseStrand() && _tree_list[scaffold].count('-') > 0)
-                    _tree_list[scaffold]['-'].findOverlapping(al.Position, al.GetEndPosition(), results);
-                else if (!al.IsReverseStrand() && _tree_list[scaffold].count('+') > 0)
-                    _tree_list[scaffold]['+'].findOverlapping(al.Position, al.GetEndPosition(), results);
+                // Check the strandedness and if the map contains intervals for that 
+                // strand on this scaffold
+                if (al.IsReverseStrand() && _tree_list[scaffold].count('-') > 0) {
+                    _tree_list[scaffold]['-'].findOverlapping(start, al.GetEndPosition(), results);
+                }
+                else if (!al.IsReverseStrand() && _tree_list[scaffold].count('+') > 0) {
+                    _tree_list[scaffold]['+'].findOverlapping(start, al.GetEndPosition(), results);
+                }
                 else {
                     ++_counts.nonOverlapping;
-                    o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                    o << scaffold << "\tA\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                     continue;
                 }
 
@@ -243,17 +251,18 @@ void TagSeqGMCounts::ProcessBam_primaryAln() {
                     pacid = results[0].value.gene;
                     _gene_counts[pacid]++;
                 }
-                else if (results.size() > 1)
+                else if (results.size() > 1) {
                     ++_counts.multiHitModel;
+                }
                 else {
                     ++_counts.nonOverlapping;
-                    o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                    o << scaffold << "\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                 }
             } 
 
             else {
                 ++_counts.nonOverlapping;
-                o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                o << scaffold << "\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
             }
         }
     }
@@ -285,7 +294,8 @@ void TagSeqGMCounts::ProcessBam_randomOne() {
     string readName;
     string pacid;
     size_t rsize;
-
+    int start;
+ 
     // Write the nonoverlapping sites to file.
     ofstream o(_nonoverlapping.c_str());
 
@@ -300,6 +310,7 @@ void TagSeqGMCounts::ProcessBam_randomOne() {
  
         // Clear the results vector
         results.clear(); 
+        start = al.Position + 1;
 
         // BWA Sometimes does weird things with the reference dictionary, so
         // this check is needed to skip a possible segmentation fault.
@@ -309,13 +320,15 @@ void TagSeqGMCounts::ProcessBam_randomOne() {
             if (_tree_list.count(scaffold) > 0) {
                 // Check the strandedness and if the map contains intervals for that 
                 // strand on this scaffold
-                if (al.IsReverseStrand() && _tree_list[scaffold].count('-') > 0)
-                    _tree_list[scaffold]['-'].findOverlapping(al.Position, al.GetEndPosition(), results);
-                else if (!al.IsReverseStrand() && _tree_list[scaffold].count('+') > 0)
-                    _tree_list[scaffold]['+'].findOverlapping(al.Position, al.GetEndPosition(), results);
+                if (al.IsReverseStrand() && _tree_list[scaffold].count('-') > 0) {
+                    _tree_list[scaffold]['-'].findOverlapping(start, al.GetEndPosition(), results);
+                }
+                else if (!al.IsReverseStrand() && _tree_list[scaffold].count('+') > 0) {
+                    _tree_list[scaffold]['+'].findOverlapping(start, al.GetEndPosition(), results);
+                }
                 else {
                     ++_counts.nonOverlapping;
-                    o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                    o << scaffold << "\tA\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                     continue;
                 }
 
@@ -336,13 +349,13 @@ void TagSeqGMCounts::ProcessBam_randomOne() {
 
                 else {
                     ++_counts.nonOverlapping;
-                    o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                    o << scaffold << "\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                 }
             }
 
             else {
                 ++_counts.nonOverlapping;
-                o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                o << scaffold << "\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
             }
         }
     }
@@ -399,6 +412,7 @@ void TagSeqGMCounts::ProcessBam_splitCounts() {
     string readName;
     string pacid;
     size_t rsize;
+    int start;
 
     // Write the nonoverlapping sites to file.
     ofstream o(_nonoverlapping.c_str());
@@ -414,6 +428,8 @@ void TagSeqGMCounts::ProcessBam_splitCounts() {
  
         // Clear the results vector
         results.clear(); 
+        
+        start = al.Position + 1;
 
         // BWA Sometimes does weird things with the reference dictionary, so
         // this check is needed to skip a possible segmentation fault.
@@ -423,13 +439,15 @@ void TagSeqGMCounts::ProcessBam_splitCounts() {
             if (_tree_list.count(scaffold) > 0) {
                 // Check the strandedness and if the map contains intervals for that 
                 // strand on this scaffold
-                if (al.IsReverseStrand() && _tree_list[scaffold].count('-') > 0)
-                    _tree_list[scaffold]['-'].findOverlapping(al.Position, al.GetEndPosition(), results);
-                else if (!al.IsReverseStrand() && _tree_list[scaffold].count('+') > 0)
-                    _tree_list[scaffold]['+'].findOverlapping(al.Position, al.GetEndPosition(), results);
+                if (al.IsReverseStrand() && _tree_list[scaffold].count('-') > 0) {
+                    _tree_list[scaffold]['-'].findOverlapping(start, al.GetEndPosition(), results);
+                }
+                else if (!al.IsReverseStrand() && _tree_list[scaffold].count('+') > 0) {
+                    _tree_list[scaffold]['+'].findOverlapping(start, al.GetEndPosition(), results);
+                }
                 else {
                     ++_counts.nonOverlapping;
-                    o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                    o << scaffold << "\tA\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                     continue;
                 }
 
@@ -450,13 +468,13 @@ void TagSeqGMCounts::ProcessBam_splitCounts() {
 
                 else {
                     ++_counts.nonOverlapping;
-                    o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                    o << scaffold << "\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
                 }
             }
 
             else {
                 ++_counts.nonOverlapping;
-                o << scaffold << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
+                o << scaffold << "\t" << al.Name << "\t" << al.Position << "\t" << al.GetEndPosition() << endl;
             }
         }
     }
@@ -498,16 +516,19 @@ void TagSeqGMCounts::WriteReadAssign(BamAlignment &al, GffInterval &result, stri
     stringstream ss;
     string pacid;
 
-    // If it doesn't overlap any we will just ignore
+    // If it doesn't overlap any we will just set the pacid to non_overlap 
     if (nover > 0) {
         for (size_t i = 0; i < result.size(); ++i) {
             if( i != 0) ss << ",";
             ss << result[i].value.gene;
         }
         pacid = ss.str();
-        _assignStream << al.Name << "\t" << pacid << "\t" << scaffold << "\t" << al.Position << "\t"
-                      << al.GetEndPosition() << "\t" << nover << endl; 
+    } else {
+        pacid = "non_overlapping";
     }
+
+    _assignStream << al.Name << "\t" << pacid << "\t" << scaffold << "\t" << al.Position << "\t"
+                  << al.GetEndPosition() << "\t" << nover << endl; 
 }
 
 /**
